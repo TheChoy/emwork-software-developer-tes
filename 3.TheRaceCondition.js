@@ -7,19 +7,17 @@ async function claimInsurance(patientId, treatmentCost) {
         throw new Error("Invalid treatmentCost");
     }
 
-    const client = await db.getClient(); // ดึง connection สำหรับ transaction
+    const client = await db.getClient(); 
 
     try {
         await client.query("BEGIN");
 
-        // ✅ แก้ SQL Injection → ใช้ Parameterized Query ($1, $2)
-        // ✅ แก้ Race Condition  → SELECT FOR UPDATE ล็อคแถวนี้ไว้ก่อนใครอ่าน
         const result = await client.query(
             `SELECT insurance_limit 
              FROM patients 
              WHERE id = $1
-             FOR UPDATE`,           // ← row-level lock
-            [patientId]             // ← parameterized (ป้องกัน SQL Injection)
+             FOR UPDATE`,           
+            [patientId]             
         );
 
         if (result.rows.length === 0) {
@@ -34,7 +32,6 @@ async function claimInsurance(patientId, treatmentCost) {
             return { success: false, reason: "Insufficient insurance limit" };
         }
 
-        // ✅ คำนวณและอัปเดตภายใน transaction เดียวกัน
         await client.query(
             `UPDATE patients 
              SET insurance_limit = insurance_limit - $1
@@ -49,6 +46,6 @@ async function claimInsurance(patientId, treatmentCost) {
         await client.query("ROLLBACK");
         throw err;
     } finally {
-        client.release(); // คืน connection กลับ pool เสมอ
+        client.release(); 
     }
 }
